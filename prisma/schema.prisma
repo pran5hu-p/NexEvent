@@ -1,0 +1,91 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql" 
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String         @id @default(cuid())
+  name          String
+  email         String         @unique
+  password      String
+  role          String         @default("customer") 
+  points        Int            @default(0)
+  // Replicating your `interests: [{ type: String }]` array
+  interests     String[]       @default([]) 
+  avatarUrl     String?        // Renamed to match your Mongoose code
+  isBlocked     Boolean        @default(false)
+  
+  // Replicating { timestamps: true }
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  events        Event[]        @relation("OrganizedEvents")
+  registrations Registration[]
+  reviews       Review[]
+}
+
+model Event {
+  id            String         @id @default(cuid())
+  title         String
+  description   String
+  category      String
+  date          DateTime
+  location      String
+  capacity      Int            @default(0)
+  posterUrl     String?        // Renamed to match your Mongoose code
+  status        String         @default("pending") 
+  // Replicating your `tags: [{ type: String }]` array
+  tags          String[]       @default([])
+  averageRating Float          @default(0)
+  
+  organizerId   String
+  organizer     User           @relation("OrganizedEvents", fields: [organizerId], references: [id])
+  
+  // Replicating { timestamps: true }
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  registrations Registration[]
+  reviews       Review[]
+}
+
+model Registration {
+  id            String    @id @default(cuid())
+  userId        String
+  eventId       String
+  status        String    @default("registered") 
+  qrCodeDataUrl String?   // Renamed to match your Mongoose code
+  checkedInAt   DateTime? // Renamed to match your Mongoose code
+  
+  user          User      @relation(fields: [userId], references: [id])
+  event         Event     @relation(fields: [eventId], references: [id])
+
+  // Replicating { timestamps: true }
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // Replicating the Mongoose index
+  @@unique([userId, eventId])
+}
+
+model Review {
+  id        String   @id @default(cuid())
+  rating    Int
+  comment   String?  @default("")
+  userId    String
+  eventId   String
+  
+  user      User     @relation(fields: [userId], references: [id])
+  event     Event    @relation(fields: [eventId], references: [id])
+
+  // Replicating { timestamps: true }
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Replicating the Mongoose index
+  @@unique([userId, eventId])
+}
