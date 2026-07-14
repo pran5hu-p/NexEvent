@@ -18,6 +18,8 @@ model User {
   interests     String[]       @default([]) 
   avatarUrl     String?        // Renamed to match your Mongoose code
   isBlocked     Boolean        @default(false)
+  resetOtp       String?   
+  resetOtpExpiry DateTime?
   
   // Replicating { timestamps: true }
   createdAt     DateTime       @default(now())
