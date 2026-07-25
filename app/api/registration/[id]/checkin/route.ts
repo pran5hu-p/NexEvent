@@ -36,6 +36,12 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
       data: { status: 'attended', checkedInAt: new Date() },
     });
 
+    fetch(`${process.env.SOCKET_SERVER_URL}/emit/checkin`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ eventId: registration.eventId, registration: updated }),
+    }).catch((err) => console.error('Socket broadcast failed:', err));
+
     return NextResponse.json({ registration: updated }, { status: 200 });
 
   } catch (error) {
