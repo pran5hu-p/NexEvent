@@ -2,26 +2,20 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { redirect } from 'next/navigation';
-import Link from 'next/link';
 import Image from 'next/image';
+import Link from 'next/link';
 
 export default async function OrganizerDashboard() {
-  // 1. Authenticate the user on the server
   const session = await getServerSession(authOptions);
   
-  if (!session?.user || (session.user.role !== 'organizer' && session.user.role !== 'admin')) {
-    redirect('/'); // Kick out unauthorized users
+  if (!session?.user || session.user.role !== 'organizer') {
+    redirect('/'); // Kick out non-organizers
   }
 
-  // 2. Fetch only the events created by this specific organizer
+  // Fetch events created by this specific organizer
   const events = await prisma.event.findMany({
     where: { organizerId: session.user.id },
     orderBy: { createdAt: 'desc' },
-    include: {
-      _count: {
-        select: { registrations: { where: { status: { not: 'cancelled' } } } }
-      }
-    }
   });
 
   return (
@@ -29,79 +23,87 @@ export default async function OrganizerDashboard() {
       <div className="flex justify-between items-center mb-8">
         <div>
           <h1 className="text-3xl font-bold text-white">Organizer Dashboard</h1>
-          <p className="text-neutral-400 mt-1">Manage your events and track live check-ins.</p>
+          <p className="text-neutral-400 mt-1">Manage your created events and track check-ins.</p>
         </div>
         <Link 
           href="/dashboard/organizer/events/create" 
-          className="bg-white text-black px-6 py-3 rounded-lg font-bold hover:bg-neutral-200 transition"
+          className="bg-green-500 hover:bg-green-600 text-black font-bold px-5 py-2.5 rounded-xl transition"
         >
-          + Create New Event
+          + Create Event
         </Link>
       </div>
 
       {events.length === 0 ? (
         <div className="bg-neutral-900 border border-neutral-800 rounded-xl p-12 text-center">
-          <h3 className="text-xl text-white mb-2">No events yet</h3>
-          <p className="text-neutral-500">You haven't created any events. Click the button above to get started.</p>
+          <h3 className="text-xl text-white mb-2">No events created yet</h3>
+          <p className="text-neutral-500 mb-6">Get started by hosting your first tech meetup or hackathon.</p>
+          <Link 
+            href="/dashboard/organizer/events/create" 
+            className="inline-block bg-neutral-800 hover:bg-neutral-700 text-white font-bold px-6 py-3 rounded-xl transition border border-neutral-700"
+          >
+            Create Your First Event
+          </Link>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {events.map((event) => (
-            <div key={event.id} className="bg-neutral-900 border border-neutral-800 rounded-xl overflow-hidden flex flex-col">
-              {/* Poster Image */}
-              <div className="relative h-48 w-full bg-neutral-800">
-                {event.posterUrl ? (
-                  <Image 
-                    src={event.posterUrl} 
-                    alt={event.title} 
-                    fill 
-                    className="object-cover"
-                  />
-                ) : (
-                  <div className="flex items-center justify-center h-full text-neutral-600">
-                    No Poster
-                  </div>
-                )}
-                {/* Status Badge */}
-                <div className="absolute top-3 right-3">
-                  <span className={`px-3 py-1 rounded-full text-xs font-bold ${
-                    event.status.trim().toLowerCase() === 'approved' ? 'bg-green-500/20 text-green-400 border border-green-500/30' :
-                    event.status.trim().toLowerCase() === 'rejected' ? 'bg-red-500/20 text-red-400 border border-red-500/30' :
-                    'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30'
-                  }`}>
-                    {event.status.trim().toUpperCase()}
-                  </span>
-                </div>
-              </div>
+          {events.map((event) => {
+            // Determine status badge styling
+            const isApproved = event.status === 'approved';
+            const statusClass = isApproved 
+              ? 'bg-green-500/20 text-green-400 border-green-500/30' 
+              : 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30';
 
-              {/* Event Details */}
-              <div className="p-5 flex-1 flex flex-col">
-                <h3 className="text-xl font-bold text-white mb-1">{event.title}</h3>
-                <p className="text-sm text-neutral-400 mb-4">{new Date(event.date).toLocaleDateString()}</p>
+            return (
+              <Link 
+                href={`/events/${event.id}`} 
+                key={event.id} 
+                className="bg-neutral-900 border border-neutral-800 rounded-xl overflow-hidden flex flex-col hover:border-neutral-600 transition duration-200 group"
+              >
                 
-                <div className="flex justify-between items-center text-sm text-neutral-300 bg-neutral-800/50 p-3 rounded-lg mb-4">
-                  <span>Registrations</span>
-                  <span className="font-mono">{event._count.registrations} / {event.capacity}</span>
+                <div className="relative h-48 w-full bg-neutral-800">
+                  {event.posterUrl ? (
+                    <Image 
+                      src={event.posterUrl} 
+                      alt={event.title} 
+                      fill 
+                      className="object-cover group-hover:scale-105 transition duration-500"
+                    />
+                  ) : (
+                    <div className="flex items-center justify-center h-full text-neutral-600">
+                      No Poster
+                    </div>
+                  )}
+                  <div className="absolute top-3 right-3">
+                    <span className={`border px-3 py-1 rounded-full text-xs font-bold uppercase ${statusClass}`}>
+                      {event.status}
+                    </span>
+                  </div>
                 </div>
 
-                {/* Actions */}
-                <div className="mt-auto pt-4 border-t border-neutral-800">
-                  {event.status.trim().toLowerCase() === 'approved' ? (
-                    <Link 
-                      href={`/dashboard/organizer/events/${event.id}/checkin`}
-                      className="block text-center w-full bg-neutral-800 hover:bg-neutral-700 text-white py-2 rounded-lg transition"
-                    >
-                      Open Live Scanner
-                    </Link>
-                  ) : (
-                    <button disabled className="w-full bg-neutral-900 text-neutral-600 py-2 rounded-lg cursor-not-allowed border border-neutral-800">
-                      Awaiting Approval
-                    </button>
-                  )}
+                <div className="p-5 flex-1 flex flex-col">
+                  <h3 className="text-xl font-bold text-white mb-2 group-hover:text-green-400 transition">{event.title}</h3>
+                  
+                  <div className="space-y-1 mb-6 text-sm">
+                    <p className="text-neutral-400">
+                      <span className="text-neutral-500">Date:</span> {new Date(event.date).toLocaleDateString()}
+                    </p>
+                    <p className="text-neutral-400">
+                      <span className="text-neutral-500">Location:</span> {event.location}
+                    </p>
+                    <p className="text-neutral-400">
+                      <span className="text-neutral-500">Capacity:</span> {event.capacity}
+                    </p>
+                  </div>
+
+                  <div className="mt-auto pt-4 border-t border-neutral-800 text-center">
+                    <span className="text-sm font-semibold text-neutral-400 group-hover:text-white transition">
+                      {isApproved ? 'Open Event & Scanner →' : 'View Pending Status →'}
+                    </span>
+                  </div>
                 </div>
-              </div>
-            </div>
-          ))}
+              </Link>
+            );
+          })}
         </div>
       )}
     </div>

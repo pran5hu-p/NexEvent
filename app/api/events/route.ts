@@ -2,6 +2,9 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getToken } from 'next-auth/jwt';
 import type { NextRequest } from 'next/server';
+import { createEventSchema } from '@/lib/validations';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth';
 
 // GET: Fetch all approved events for the public homepage
 export async function GET(req: NextRequest) {
@@ -31,40 +34,25 @@ export async function GET(req: NextRequest) {
 // POST: Create a new event (Protected Route)
 export async function POST(req: NextRequest) {
   try {
-    // 1. Verify the user is logged in
-    const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET });
+    const session = await getServerSession(authOptions);
     
-    if (!token) {
+    if (!session?.user) {
       return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
     }
 
-    // 2. Verify the user has the correct permissions
-    if (token.role !== 'organizer' && token.role !== 'admin') {
+    // 2. Verify permissions
+    if (session.user.role !== 'organizer' && session.user.role !== 'admin') {
       return NextResponse.json({ message: 'Only organizers can create events' }, { status: 403 });
     }
 
-    // 3. Parse the incoming form data
     const body = await req.json();
-    const { title, description, category, date, location, capacity, posterUrl, tags } = body;
+    const validData = createEventSchema.parse(body);
 
-    // Basic validation
-    if (!title || !description || !category || !date || !location) {
-      return NextResponse.json({ message: 'Missing required fields' }, { status: 400 });
-    }
-
-    // 4. Save the event to the PostgreSQL database
     const newEvent = await prisma.event.create({
       data: {
-        title,
-        description,
-        category,
-        date: new Date(date), // Convert string to proper DateTime
-        location,
-        capacity: Number(capacity) || 0,
-        posterUrl: posterUrl || null,
-        tags: tags || [],
-        status: 'pending', // Defaults to pending until an Admin approves it
-        organizerId: token.id as string, // Tie the event to the user who created it
+        ...validData,
+        status: 'pending', 
+        organizerId: session.user.id, // <-- Use session.user.id instead of token.id
       },
     });
 

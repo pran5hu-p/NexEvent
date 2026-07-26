@@ -3,7 +3,7 @@ import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { redirect } from 'next/navigation';
 import Image from 'next/image';
-import AdminApprovalButtons from '@/components/AdminApprovalButtons';
+import Link from 'next/link'; // <-- Added Link import
 
 export default async function AdminDashboard() {
   const session = await getServerSession(authOptions);
@@ -38,7 +38,11 @@ export default async function AdminDashboard() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {pendingEvents.map((event) => (
-            <div key={event.id} className="bg-neutral-900 border border-neutral-800 rounded-xl overflow-hidden flex flex-col">
+            <Link 
+              href={`/events/${event.id}`} 
+              key={event.id} 
+              className="bg-neutral-900 border border-neutral-800 rounded-xl overflow-hidden flex flex-col hover:border-neutral-600 transition duration-200 group"
+            >
               
               <div className="relative h-48 w-full bg-neutral-800">
                 {event.posterUrl ? (
@@ -46,7 +50,7 @@ export default async function AdminDashboard() {
                     src={event.posterUrl} 
                     alt={event.title} 
                     fill 
-                    className="object-cover"
+                    className="object-cover group-hover:scale-105 transition duration-500"
                   />
                 ) : (
                   <div className="flex items-center justify-center h-full text-neutral-600">
@@ -61,9 +65,9 @@ export default async function AdminDashboard() {
               </div>
 
               <div className="p-5 flex-1 flex flex-col">
-                <h3 className="text-xl font-bold text-white mb-2">{event.title}</h3>
+                <h3 className="text-xl font-bold text-white mb-2 group-hover:text-green-400 transition">{event.title}</h3>
                 
-                <div className="space-y-1 mb-4 text-sm">
+                <div className="space-y-1 mb-6 text-sm">
                   <p className="text-neutral-400">
                     <span className="text-neutral-500">By:</span> {event.organizer?.name || 'Unknown'}
                   </p>
@@ -75,11 +79,13 @@ export default async function AdminDashboard() {
                   </p>
                 </div>
 
-                <div className="mt-auto">
-                  <AdminApprovalButtons eventId={event.id} />
+                <div className="mt-auto pt-4 border-t border-neutral-800 text-center">
+                  <span className="text-sm font-semibold text-neutral-400 group-hover:text-white transition">
+                    Click to Review & Approve →
+                  </span>
                 </div>
               </div>
-            </div>
+            </Link>
           ))}
         </div>
       )}

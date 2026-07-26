@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { getToken } from 'next-auth/jwt';
 import type { NextRequest } from 'next/server';
 
+
 type RouteParams = { params: Promise<{ id: string }> };
 
 // GET: Fetch a single event by ID
@@ -106,11 +107,16 @@ export async function DELETE(req: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ message: 'Event not found' }, { status: 404 });
     }
 
-    // Security Check: Only the owner or an admin can delete it
     if (existingEvent.organizerId !== token.id && token.role !== 'admin') {
       return NextResponse.json({ message: 'Forbidden: You can only delete your own events' }, { status: 403 });
     }
 
+    // 1. Delete any associated registrations first (safeguards against foreign key crashes)
+    await prisma.registration.deleteMany({
+      where: { eventId: id },
+    });
+
+    // 2. Now safe to delete the event
     await prisma.event.delete({
       where: { id },
     });
