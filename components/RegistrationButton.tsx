@@ -13,7 +13,7 @@ export default function RegistrationButton({ eventId }: { eventId: string }) {
     const toastId = toast.loading('Securing your ticket...');
 
     try {
-      const res = await fetch('/api/registrations', {
+      const res = await fetch('/api/registration', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ eventId }),

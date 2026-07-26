@@ -53,6 +53,12 @@ export default function Navbar() {
                   </Link>
                 )}
 
+                {session.user?.role === 'customer' && (
+                  <Link href="/dashboard/user" className="text-sm font-medium text-neutral-300 hover:text-white transition-colors">
+                    Dashboard
+                  </Link>
+                )}
+
                 <button
                   onClick={() => signOut({ callbackUrl: '/login' })}
                   className="text-sm font-medium text-white bg-neutral-800 border border-neutral-700 px-4 py-2 rounded-lg hover:bg-neutral-700 transition-colors"
