@@ -19,9 +19,22 @@ export default function CreateEventPage() {
     tags: '',
   });
 
+  const getCurrentDateTime = () => {
+    const now = new Date();
+    now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+    return now.toISOString().slice(0, 16);
+  };
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
+
+    if (new Date(form.date) < new Date()) {
+      toast.error('Event date cannot be in the past');
+      setLoading(false);
+      return;
+    }
+
     const toastId = toast.loading('Uploading poster...');
 
     try {
@@ -115,12 +128,13 @@ export default function CreateEventPage() {
           <div>
             <label className="block text-sm text-neutral-400 mb-1">Date & Time</label>
             <input
-              required
-              type="datetime-local"
-              className="w-full bg-neutral-800 text-white rounded-lg p-3 border border-neutral-700 focus:border-white outline-none [color-scheme:dark]"
-              value={form.date}
-              onChange={(e) => setForm({ ...form, date: e.target.value })}
-            />
+                required
+                type="datetime-local"
+                min={getCurrentDateTime()}
+                className="w-full bg-neutral-800 text-white rounded-lg p-3 border border-neutral-700 focus:border-white outline-none [color-scheme:dark]"
+                value={form.date}
+                onChange={(e) => setForm({ ...form, date: e.target.value })}
+              />
           </div>
         </div>
 

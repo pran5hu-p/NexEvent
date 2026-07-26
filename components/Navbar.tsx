@@ -42,7 +42,13 @@ export default function Navbar() {
                 
                 {/* Role-based Dashboard Link */}
                 {session.user?.role === 'organizer' && (
-                  <Link href="/dashboard" className="text-sm font-medium text-neutral-300 hover:text-white transition-colors">
+                  <Link href="/dashboard/organizer" className="text-sm font-medium text-neutral-300 hover:text-white transition-colors">
+                    Dashboard
+                  </Link>
+                )}
+
+                {session.user?.role === 'admin' && (
+                  <Link href="/dashboard/admin" className="text-sm font-medium text-neutral-300 hover:text-white transition-colors">
                     Dashboard
                   </Link>
                 )}
