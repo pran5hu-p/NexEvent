@@ -54,13 +54,12 @@ export default async function OrganizerDashboard() {
               : 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30';
 
             return (
-              <Link 
-                href={`/events/${event.id}`} 
+              <div 
                 key={event.id} 
                 className="bg-neutral-900 border border-neutral-800 rounded-xl overflow-hidden flex flex-col hover:border-neutral-600 transition duration-200 group"
               >
-                
-                <div className="relative h-48 w-full bg-neutral-800">
+                {/* Clickable Card Header / Poster */}
+                <Link href={`/events/${event.id}`} className="relative h-48 w-full bg-neutral-800 block">
                   {event.posterUrl ? (
                     <Image 
                       src={event.posterUrl} 
@@ -78,10 +77,12 @@ export default async function OrganizerDashboard() {
                       {event.status}
                     </span>
                   </div>
-                </div>
+                </Link>
 
                 <div className="p-5 flex-1 flex flex-col">
-                  <h3 className="text-xl font-bold text-white mb-2 group-hover:text-green-400 transition">{event.title}</h3>
+                  <Link href={`/events/${event.id}`}>
+                    <h3 className="text-xl font-bold text-white mb-2 group-hover:text-green-400 transition">{event.title}</h3>
+                  </Link>
                   
                   <div className="space-y-1 mb-6 text-sm">
                     <p className="text-neutral-400">
@@ -95,13 +96,23 @@ export default async function OrganizerDashboard() {
                     </p>
                   </div>
 
-                  <div className="mt-auto pt-4 border-t border-neutral-800 text-center">
-                    <span className="text-sm font-semibold text-neutral-400 group-hover:text-white transition">
-                      {isApproved ? 'Open Event & Scanner →' : 'View Pending Status →'}
-                    </span>
+                  {/* Actions Footer: Analytics & Details */}
+                  <div className="mt-auto pt-4 border-t border-neutral-800 flex gap-2">
+                    <Link 
+                      href={`/dashboard/organizer/analytics/${event.id}`}
+                      className="flex-1 bg-neutral-800 hover:bg-neutral-700 text-white font-medium py-2 rounded-lg text-xs text-center transition border border-neutral-700"
+                    >
+                      📊 Analytics
+                    </Link>
+                    <Link 
+                      href={`/events/${event.id}`}
+                      className="flex-1 bg-green-500/10 hover:bg-green-500/20 text-green-400 font-medium py-2 rounded-lg text-xs text-center transition border border-green-500/20"
+                    >
+                      Manage →
+                    </Link>
                   </div>
                 </div>
-              </Link>
+              </div>
             );
           })}
         </div>
