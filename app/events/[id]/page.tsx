@@ -7,6 +7,8 @@ import RegistrationButton from '@/components/RegistrationButton';
 import AdminApprovalButtons from '@/components/AdminApprovalButtons';
 import Link from 'next/link';
 import DeleteEventButton from '@/components/DeleteEventButton';
+import ReviewList from '@/components/ReviewList';
+import ReviewForm from '@/components/ReviewForm';
 
 export default async function EventDetailsPage({ 
   params 
@@ -16,11 +18,19 @@ export default async function EventDetailsPage({
   const { id } = await params;
   const session = await getServerSession(authOptions);
 
-  // 1. Fetch the event details
+  // 1. Fetch the event details along with reviews
   const event = await prisma.event.findUnique({
     where: { id },
     include: {
-      organizer: { select: { name: true } }
+      organizer: { select: { name: true } },
+      reviews: {
+        include: {
+          user: {
+            select: { name: true, avatarUrl: true }
+          }
+        },
+        orderBy: { createdAt: 'desc' }
+      }
     }
   });
 
@@ -42,6 +52,20 @@ export default async function EventDetailsPage({
       where: { eventId: id, userId: session.user.id }
     });
     if (existingRegistration) isRegistered = true;
+  }
+
+  // 4. Review Logic: Can the current user leave a review?
+  const isEventCompleted = new Date(event.date) < new Date();
+  let canReview = false;
+
+  if (session?.user && isEventCompleted && !isAdmin && !isOrganizer) {
+    // Check if they already reviewed it
+    const hasReviewed = event.reviews.some((r) => r.userId === session?.user?.id);
+    
+    // If they haven't reviewed it (and ideally if they registered, though we keep it open for now)
+    if (!hasReviewed) {
+      canReview = true;
+    }
   }
 
   return (
@@ -153,6 +177,21 @@ export default async function EventDetailsPage({
         </div>
 
       </div>
+
+      {/* Reviews Section */}
+      <div className="mt-16 border-t border-neutral-800 pt-8">
+        
+        {/* Render the form only if the event is over and they haven't reviewed it */}
+        {canReview && (
+          <div className="mb-10">
+            <ReviewForm eventId={event.id} />
+          </div>
+        )}
+
+        {/* Unconditionally render the list so everyone can see them */}
+        <ReviewList reviews={event.reviews} />
+      </div>
+
     </div>
   );
 }
