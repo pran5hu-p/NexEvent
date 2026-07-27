@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { createRegistrationSchema } from '@/lib/validations';
+import { sendTicketConfirmationEmail } from '@/lib/email';
 
 export async function POST(req: Request) {
   try {
@@ -22,7 +23,21 @@ export async function POST(req: Request) {
       data: {
         eventId: validData.eventId,
         userId: session.user.id,
+        status: 'registered',
       },
+      include: {
+        user: { select: { name: true, email: true } },
+        event: { select: { title: true, date: true, location: true } }
+      }
+    });
+
+    // 5. Send automated confirmation email
+    await sendTicketConfirmationEmail({
+      toEmail: registration.user.email,
+      userName: registration.user.name,
+      eventTitle: registration.event.title,
+      eventDate: registration.event.date,
+      eventLocation: registration.event.location,
     });
 
     return NextResponse.json(registration, { status: 201 });

@@ -3,7 +3,8 @@ import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
-import QRCodeWrapper from '@/components/QRCodeWrapper'; // We will create this helper component
+import QRCodeWrapper from '@/components/QRCodeWrapper';
+import CancelTicketButton from '@/components/CancelTicketButton' // Client component for cancellation
 
 export default async function UserDashboardPage() {
   const session = await getServerSession(authOptions);
@@ -12,7 +13,6 @@ export default async function UserDashboardPage() {
     redirect('/api/auth/signin');
   }
 
-  // Fetch all registrations for the logged-in user with event details
   const registrations = await prisma.registration.findMany({
     where: { userId: session.user.id },
     include: {
@@ -33,7 +33,7 @@ export default async function UserDashboardPage() {
     <div className="max-w-6xl mx-auto mt-10 p-6 text-white">
       <div className="mb-8">
         <h1 className="text-3xl font-bold">My Tickets</h1>
-        <p className="text-neutral-400 mt-1">View your registered events and entry QR codes.</p>
+        <p className="text-neutral-400 mt-1">View your registered events, entry QR codes, or cancel bookings.</p>
       </div>
 
       {registrations.length === 0 ? (
@@ -74,19 +74,24 @@ export default async function UserDashboardPage() {
                   <p className="text-sm text-neutral-400 mb-6">📍 {reg.event.location}</p>
                 </div>
 
-                {/* QR Code Container */}
-                <div className="bg-white p-4 rounded-xl flex flex-col items-center justify-center my-4">
-                  <QRCodeWrapper value={reg.id} />
-                  <p className="text-xs text-neutral-600 mt-2 font-medium">Show this code at the venue entrance</p>
-                </div>
+                {!isCheckedIn && (
+                  <div className="bg-white p-4 rounded-xl flex flex-col items-center justify-center my-4">
+                    <QRCodeWrapper value={reg.id} />
+                    <p className="text-xs text-neutral-600 mt-2 font-medium">Show this code at the venue entrance</p>
+                  </div>
+                )}
 
-                <div className="pt-4 border-t border-neutral-800 flex justify-between items-center">
+                <div className="pt-4 border-t border-neutral-800 flex justify-between items-center mt-4">
                   <Link 
                     href={`/events/${reg.event.id}`} 
                     className="text-sm text-green-400 hover:underline font-semibold"
                   >
                     View Event Details →
                   </Link>
+
+                  {!isCheckedIn && (
+                    <CancelTicketButton registrationId={reg.id} />
+                  )}
                 </div>
               </div>
             );
