@@ -24,7 +24,7 @@ export default function ReviewForm({ eventId }: { eventId: string }) {
     setError('');
 
     try {
-      const res = await fetch('/api/reviews', {
+      const res = await fetch('/api/review', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ eventId, rating, comment }),
