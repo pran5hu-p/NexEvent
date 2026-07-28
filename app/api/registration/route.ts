@@ -4,9 +4,19 @@ import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { createRegistrationSchema } from '@/lib/validations';
 import { sendTicketConfirmationEmail } from '@/lib/email';
+import { eventRegisterLimiter, getClientIp } from '@/lib/rateLimit';
 
 export async function POST(req: Request) {
   try {
+    const ip = getClientIp(req);
+    try {
+      await eventRegisterLimiter.consume(ip);
+    } catch {
+      return NextResponse.json(
+        { message: 'Too many attempts, try again later' }, 
+        { status: 429 }
+      );
+    }
     const session = await getServerSession(authOptions);
     
     if (!session?.user) {

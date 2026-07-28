@@ -5,6 +5,7 @@ import type { NextRequest } from 'next/server';
 import { createEventSchema } from '@/lib/validations';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
+import { eventCreateLimiter, getClientIp } from '@/lib/rateLimit';
 
 // GET: Fetch all approved events for the public homepage
 export async function GET(req: NextRequest) {
@@ -34,6 +35,15 @@ export async function GET(req: NextRequest) {
 // POST: Create a new event (Protected Route)
 export async function POST(req: NextRequest) {
   try {
+    const ip = getClientIp(req);
+    try {
+      await eventCreateLimiter.consume(ip);
+    } catch {
+      return NextResponse.json(
+        { message: 'Event creation limit reached. You can only create 5 events per hour.' }, 
+        { status: 429 }
+      );
+    }
     const session = await getServerSession(authOptions);
     
     if (!session?.user) {

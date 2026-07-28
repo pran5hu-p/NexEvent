@@ -3,8 +3,8 @@ import { NextAuthOptions } from 'next-auth';
 import CredentialsProvider from 'next-auth/providers/credentials';
 import { prisma } from './prisma';
 import bcrypt from 'bcryptjs';
+import { authLimiter } from '@/lib/rateLimit';
 
-// 1. Tell TypeScript about our custom fields to remove the red squiggly lines
 declare module 'next-auth' {
   interface Session {
     user: {
@@ -45,21 +45,30 @@ export const authOptions: NextAuthOptions = {
           throw new Error('Please enter an email and password');
         }
 
-        // Look up the user by email
+        const email = credentials.email.toLowerCase();
+
+        // 1. Consume a point for this specific email address
+        try {
+          await authLimiter.consume(email);
+        } catch {
+          throw new Error('Too many login attempts. Please try again in 15 minutes.');
+        }
+
+        // 2. Look up the user by email
         const user = await prisma.user.findUnique({
-          where: { email: credentials.email.toLowerCase() },
+          where: { email },
         });
 
         if (!user) {
           throw new Error('No user found with this email');
         }
 
-        // Check if the user's account is suspended
+        // 3. Check if the user's account is suspended
         if (user.isBlocked) {
           throw new Error('Your account has been suspended');
         }
 
-        // Verify the password match
+        // 4. Verify the password match
         const isPasswordValid = await bcrypt.compare(credentials.password, user.password);
 
         if (!isPasswordValid) {

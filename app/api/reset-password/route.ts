@@ -1,9 +1,19 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import bcrypt from 'bcryptjs';
+import { otpLimiter, getClientIp } from '@/lib/rateLimit';
 
 export async function POST(req: Request) {
   try {
+    const ip = getClientIp(req);
+    try {
+      await otpLimiter.consume(ip);
+    } catch {
+      return NextResponse.json(
+        { message: 'Too many attempts, try again later' }, 
+        { status: 429 }
+      );
+    }
     const { email, otp, newPassword } = await req.json();
 
     if (!email || !otp || !newPassword) {

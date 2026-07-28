@@ -2,9 +2,19 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
+import { getClientIp, profileUpdateLimiter } from '@/lib/rateLimit';
 
 export async function PATCH(req: Request) {
   try {
+    const ip = getClientIp(req);
+    try {
+      await profileUpdateLimiter.consume(ip);
+    } catch {
+      return NextResponse.json(
+        { message: 'Too many profile updates. Please wait a minute.' }, 
+        { status: 429 }
+      );
+    }
     const session = await getServerSession(authOptions);
 
     if (!session?.user) {

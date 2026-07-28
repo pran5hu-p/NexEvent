@@ -2,9 +2,19 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import nodemailer from 'nodemailer';
 import crypto from 'crypto';
+import { otpLimiter, getClientIp } from '@/lib/rateLimit';
 
 export async function POST(req: Request) {
   try {
+    const ip = getClientIp(req);
+    try {
+      await otpLimiter.consume(ip);
+    } catch {
+      return NextResponse.json(
+        { message: 'Too many attempts, try again later' }, 
+        { status: 429 }
+      );
+    }
     const { email } = await req.json();
 
     if (!email) {
