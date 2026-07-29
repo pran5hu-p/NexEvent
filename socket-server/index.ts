@@ -3,6 +3,8 @@ import { createServer } from 'http';
 import { Server } from 'socket.io';
 import cors from 'cors';
 import 'dotenv/config';
+import { createAdapter } from '@socket.io/redis-adapter';
+import { createClient } from 'redis';
 
 const app = express();
 // Allow Next.js to communicate with this server
@@ -12,6 +14,22 @@ const httpServer = createServer(app);
 const io = new Server(httpServer, {
   cors: { origin: process.env.NEXT_APP_URL || 'http://localhost:3000' },
 });
+
+// --- REDIS ADAPTER SETUP ---
+const pubClient = createClient({ 
+  url: process.env.REDIS_URL || 'redis://localhost:6379' 
+});
+const subClient = pubClient.duplicate();
+
+Promise.all([pubClient.connect(), subClient.connect()])
+  .then(() => {
+    io.adapter(createAdapter(pubClient, subClient));
+    console.log('🔗 Redis Adapter connected to Socket.io');
+  })
+  .catch((err) => {
+    console.error('✕ Redis Adapter connection failed:', err);
+  });
+// ---------------------------
 
 io.on('connection', (socket) => {
   console.log('Client connected:', socket.id);
