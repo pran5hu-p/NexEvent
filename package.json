@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "worker": "tsx watch workers/emailWorker.ts"
+    "worker:dev": "tsx watch workers/emailWorker.ts",
+    "worker": "tsx workers/emailWorker.ts"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.11.2",
