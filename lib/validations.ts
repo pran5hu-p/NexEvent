@@ -28,11 +28,19 @@ export const checkInSchema = z.object({
   registrationId: z.string().min(1, 'Registration ID is required'),
 });
 
-// --- REVIEW SCHEMAS ---
 export const createReviewSchema = z.object({
-  rating: z.coerce.number().int().min(1, 'Minimum rating is 1').max(5, 'Maximum rating is 5'),
-  comment: z.string().max(500, 'Comment is too long').optional(),
+  eventId: z.string().min(1, 'Event ID is required'),
+  rating: z.number().min(1, 'Rating must be at least 1').max(5, 'Rating cannot exceed 5'),
+  comment: z.string().optional(),
 });
+
+// 2. New Cancel Registration Schema
+export const cancelRegistrationSchema = z.object({
+  registrationId: z.string().min(1, 'Registration ID is required'),
+});
+
+// 3. New Update Event Schema (Makes all fields from createEventSchema optional)
+export const updateEventSchema = createEventSchema.partial();
 
 // --- USER PROFILE SCHEMAS ---
 export const updateUserSchema = z.object({

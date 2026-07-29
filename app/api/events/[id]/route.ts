@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getToken } from 'next-auth/jwt';
+import { updateEventSchema } from '@/lib/validations';
 import type { NextRequest } from 'next/server';
-
 
 type RouteParams = { params: Promise<{ id: string }> };
 
@@ -55,31 +55,21 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ message: 'Forbidden: You can only edit your own events' }, { status: 403 });
     }
 
-    // 3. Parse and format the incoming updates
+    // 3. Parse and validate the incoming updates using Zod
     const body = await req.json();
-    
-    // Explicitly define the fields an Organizer is allowed to update
-    const updateData: any = {
-      ...(body.title && { title: body.title }),
-      ...(body.description && { description: body.description }),
-      ...(body.category && { category: body.category }),
-      ...(body.location && { location: body.location }),
-      ...(body.posterUrl && { posterUrl: body.posterUrl }),
-      ...(body.tags && { tags: body.tags }),
-    };
+    const parsed = updateEventSchema.safeParse(body);
 
-    // Handle the type conversions safely
-    if (body.date) {
-      updateData.date = new Date(body.date);
-    }
-    if (body.capacity) {
-      updateData.capacity = Number(body.capacity);
+    if (!parsed.success) {
+      return NextResponse.json(
+        { message: parsed.error.issues[0].message },
+        { status: 400 }
+      );
     }
 
-    // 4. Save the safe updates
+    // 4. Save the safe updates directly from parsed data
     const updatedEvent = await prisma.event.update({
       where: { id },
-      data: updateData, // Pass the safe object instead of the raw body
+      data: parsed.data,
     });
 
     return NextResponse.json(updatedEvent, { status: 200 });

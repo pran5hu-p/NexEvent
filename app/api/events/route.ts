@@ -56,13 +56,20 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    const validData = createEventSchema.parse(body);
+    const parsed = createEventSchema.safeParse(body);
+
+    if (!parsed.success) {
+      return NextResponse.json(
+        { message: parsed.error.issues[0].message },
+        { status: 400 }
+      );
+    }
 
     const newEvent = await prisma.event.create({
       data: {
-        ...validData,
+        ...parsed.data,
         status: 'pending', 
-        organizerId: session.user.id, // <-- Use session.user.id instead of token.id
+        organizerId: session.user.id, 
       },
     });
 

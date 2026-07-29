@@ -2,22 +2,39 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
+import { cancelRegistrationSchema } from '@/lib/validations';
+import { getClientIp, eventRegisterLimiter } from '@/lib/rateLimit';
 
 export async function POST(req: Request) {
   try {
+    const ip = getClientIp(req);
+    try {
+      await eventRegisterLimiter.consume(ip);
+    } catch {
+      return NextResponse.json(
+        { message: 'Too many attempts. Please wait a minute.' }, 
+        { status: 429 }
+      );
+    }
     // 1. Modern Authentication
     const session = await getServerSession(authOptions);
     if (!session?.user) {
       return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
     }
 
-    // 2. Get the registration ID from the request body
     const body = await req.json();
-    const { registrationId } = body;
 
-    if (!registrationId) {
-      return NextResponse.json({ message: 'Registration ID is required' }, { status: 400 });
+    // 2. Zod Validation (Replaces the manual if(!registrationId) check)
+    const parsed = cancelRegistrationSchema.safeParse(body);
+    
+    if (!parsed.success) {
+      return NextResponse.json(
+        { message: parsed.error.issues[0].message },
+        { status: 400 }
+      );
     }
+
+    const { registrationId } = parsed.data;
 
     // 3. Find the registration
     const registration = await prisma.registration.findUnique({

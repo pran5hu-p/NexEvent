@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { v2 as cloudinary } from 'cloudinary';
 import { getToken } from 'next-auth/jwt';
 import type { NextRequest } from 'next/server';
+import { getClientIp, uploadLimiter } from '@/lib/rateLimit';
 
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
@@ -11,6 +12,15 @@ cloudinary.config({
 
 export async function POST(req: NextRequest) {
   try {
+    const ip = getClientIp(req);
+    try {
+      await uploadLimiter.consume(ip);
+    } catch {
+      return NextResponse.json(
+        { message: 'Upload limit reached. Try again in an hour.' }, 
+        { status: 429 }
+      );
+    }
     const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET });
     
     if (!token) {
@@ -20,14 +30,30 @@ export async function POST(req: NextRequest) {
     if (token.role !== 'organizer' && token.role !== 'admin') {
       return NextResponse.json({ message: 'Only organizers can upload posters' }, { status: 403 });
     }
+    
     const formData = await req.formData();
     const file = formData.get('file') as File;
 
     if (!file) {
       return NextResponse.json({ message: 'No file provided' }, { status: 400 });
     }
+
+    // --- NEW SECURITY CONSTRAINTS ---
+    const MAX_SIZE = 5 * 1024 * 1024; // 5MB limit
+    const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
+
+    if (!ALLOWED_TYPES.includes(file.type)) {
+      return NextResponse.json({ message: 'Only JPEG, PNG, or WEBP images allowed' }, { status: 400 });
+    }
+
+    if (file.size > MAX_SIZE) {
+      return NextResponse.json({ message: 'File too large (max 5MB)' }, { status: 400 });
+    }
+    // ---------------------------------
+
     const arrayBuffer = await file.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
+    
     const uploadResult = await new Promise((resolve, reject) => {
       const uploadStream = cloudinary.uploader.upload_stream(
         { folder: 'nexevent_posters' }, // Keeps your Cloudinary dashboard organized

@@ -36,6 +36,27 @@ export const profileUpdateLimiter = new RateLimiterRedis({
   duration: 60, // 10 updates per 1 minute (60 seconds)
 });
 
+export const reviewLimiter = new RateLimiterRedis({
+  storeClient: redis,
+  keyPrefix: 'rl:review',
+  points: 5, // 5 reviews
+  duration: 60 * 60, // per 1 hour
+});
+
+export const uploadLimiter = new RateLimiterRedis({
+  storeClient: redis,
+  keyPrefix: 'rl:upload',
+  points: 10, // 10 uploads
+  duration: 60 * 60, // per 1 hour
+});
+
+export const checkinLimiter = new RateLimiterRedis({
+  storeClient: redis,
+  keyPrefix: 'rl:checkin',
+  points: 60, // 60 check-ins
+  duration: 60, // per 1 minute (allows fast scanning, stops runaway loops)
+});
+
 // Helper function to get the user's IP address
 export function getClientIp(req: Request): string {
   const fwd = req.headers.get('x-forwarded-for');
