@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { updateEventStatusSchema } from '@/lib/validations';
+import { emailQueue } from '@/lib/queue';
 
 export async function PATCH(
   req: Request,
@@ -17,15 +18,43 @@ export async function PATCH(
 
     const { id } = await params;
     const body = await req.json();
-
-    // 1. Zod safely parses the status
     const validData = updateEventStatusSchema.parse(body);
 
-    // 2. We inject the safely validated data directly
     const updatedEvent = await prisma.event.update({
       where: { id },
-      data: validData, 
+      data: validData,
+      include: {
+        organizer: { select: { email: true, name: true } },
+      },
     });
+
+    // 1. Send immediate status update to the organizer
+    if (updatedEvent.organizer?.email) {
+      await emailQueue.add('event-status', {
+        to: updatedEvent.organizer.email,
+        eventTitle: updatedEvent.title,
+        status: updatedEvent.status,
+      });
+    }
+
+    // 2. Schedule the bulk reminder for attendees IF the event was just approved
+    if (updatedEvent.status === 'approved') {
+      // Calculate milliseconds until 24 hours before the event starts
+      const ONE_DAY_MS = 24 * 60 * 60 * 1000;
+      const timeUntilReminder = new Date(updatedEvent.date).getTime() - ONE_DAY_MS - Date.now();
+
+      // Only schedule it if the event is actually more than 24 hours away
+      if (timeUntilReminder > 0) {
+        await emailQueue.add(
+          'event-reminder',
+          { eventId: updatedEvent.id, eventTitle: updatedEvent.title },
+          { 
+            delay: timeUntilReminder, 
+            jobId: `reminder-${updatedEvent.id}` // Giving it a custom ID prevents duplicate schedules
+          }
+        );
+      }
+    }
 
     return NextResponse.json({ event: updatedEvent }, { status: 200 });
   } catch (error: any) {

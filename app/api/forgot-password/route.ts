@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import nodemailer from 'nodemailer';
 import crypto from 'crypto';
 import { otpLimiter, getClientIp } from '@/lib/rateLimit';
+import { emailQueue } from '@/lib/queue';
 
 export async function POST(req: Request) {
   try {
@@ -43,27 +44,11 @@ export async function POST(req: Request) {
         resetOtpExpiry: otpExpiry,
       },
     });
-
-    // 4. Configure Nodemailer (You will need to add these to your .env file)
-    const transporter = nodemailer.createTransport({
-      service: 'gmail',
-      auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS, // This must be an "App Password", not your normal password
-      },
-    });
-
-    // 5. Send the email
-    await transporter.sendMail({
-      from: `"NexEvent Security" <${process.env.EMAIL_USER}>`,
+    // Drop the job into Redis instead of sending the email directly
+    await emailQueue.add('otp', {
       to: user.email,
       subject: 'Your Password Reset OTP',
-      html: `
-        <h2>Password Reset</h2>
-        <p>Your One-Time Password (OTP) is: <strong>${otp}</strong></p>
-        <p>This code will expire in 10 minutes.</p>
-        <p>If you did not request this, please ignore this email.</p>
-      `,
+      otp: otp // Passing the OTP data to the worker
     });
 
     return NextResponse.json({ message: 'If this email exists, an OTP was sent.' }, { status: 200 });

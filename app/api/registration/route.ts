@@ -5,6 +5,7 @@ import { prisma } from '@/lib/prisma';
 import { createRegistrationSchema } from '@/lib/validations';
 import { sendTicketConfirmationEmail } from '@/lib/email';
 import { eventRegisterLimiter, getClientIp } from '@/lib/rateLimit';
+import { emailQueue } from '@/lib/queue';
 
 export async function POST(req: Request) {
   try {
@@ -40,10 +41,8 @@ export async function POST(req: Request) {
         event: { select: { title: true, date: true, location: true } }
       }
     });
-
-    // 5. Send automated confirmation email
-    await sendTicketConfirmationEmail({
-      toEmail: registration.user.email,
+    await emailQueue.add('ticket-confirmation', {
+      to: registration.user.email,
       userName: registration.user.name,
       eventTitle: registration.event.title,
       eventDate: registration.event.date,
@@ -51,6 +50,7 @@ export async function POST(req: Request) {
     });
 
     return NextResponse.json(registration, { status: 201 });
+    
   } catch (error: any) {
     if (error.name === 'ZodError') {
       return NextResponse.json({ message: error.errors[0].message }, { status: 400 });
