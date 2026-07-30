@@ -1,5 +1,8 @@
 import { Queue } from 'bullmq';
-import { redis } from './redis';
+import Redis from 'ioredis';
 
-// Create a queue named 'emails' using our existing Redis connection
-export const emailQueue = new Queue('emails', { connection: redis });
+const bullConnection = new Redis(process.env.REDIS_URL || 'redis://localhost:6379', {
+  maxRetriesPerRequest: null, // required by BullMQ
+});
+
+export const emailQueue = new Queue('emails', { connection: bullConnection });

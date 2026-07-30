@@ -1,8 +1,12 @@
 import { Worker } from 'bullmq';
-import { redis } from '@/lib/redis';
 import { prisma } from '@/lib/prisma';
 import nodemailer from 'nodemailer';
 import http from 'http';
+// Dedicated BullMQ-safe connection:
+import Redis from 'ioredis';
+const redis = new Redis(process.env.REDIS_URL || 'redis://localhost:6379', {
+  maxRetriesPerRequest: null, // required by BullMQ
+});
 
 const PORT = process.env.PORT || 3001;
 http.createServer((req, res) => {
@@ -119,6 +123,10 @@ worker.on('completed', (job) => {
 
 worker.on('failed', (job, err) => {
   console.error(`✕ Job ${job?.id} failed: ${err.message}`);
+});
+
+worker.on('error', (err) => {
+  console.error('Worker error:', err);
 });
 
 console.log('👷 Email worker is running with Nodemailer enabled...');
