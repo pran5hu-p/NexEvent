@@ -2,6 +2,15 @@ import { Worker } from 'bullmq';
 import { redis } from '@/lib/redis';
 import { prisma } from '@/lib/prisma';
 import nodemailer from 'nodemailer';
+import http from 'http';
+
+const PORT = process.env.PORT || 3001;
+http.createServer((req, res) => {
+  res.writeHead(200);
+  res.end('Worker is running');
+}).listen(PORT, () => {
+  console.log(`Dummy health-check server listening on port ${PORT}`);
+});
 
 // 1. Set up the email transporter outside the worker so it gets reused
 const transporter = nodemailer.createTransport({
