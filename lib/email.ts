@@ -1,5 +1,7 @@
 import nodemailer from 'nodemailer';
 
+const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+
 const transporter = nodemailer.createTransport({
   service: 'gmail', // Or use host, port, auth for other providers
   auth: {
@@ -42,7 +44,7 @@ export async function sendTicketConfirmationEmail({
             <p style="margin: 5px 0;">📍 <strong>Location:</strong> ${eventLocation}</p>
           </div>
 
-          <p>You can view your entry QR code anytime by visiting your <a href="http://localhost:3000/dashboard/user" style="color: #22c55e; text-decoration: underline;">User Ticket Dashboard</a>.</p>
+          <p>You can view your entry QR code anytime by visiting your <a href="${appUrl}/dashboard/user" style="color: #22c55e; text-decoration: underline;">User Ticket Dashboard</a>.</p>
           
           <p style="color: #737373; font-size: 12px; margin-top: 30px;">See you at the event!<br/>- The NexEvent Team</p>
         </div>
